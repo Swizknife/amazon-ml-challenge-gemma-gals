@@ -1,0 +1,16 @@
+# Provided dataset (organizer-supplied, not ours to redistribute)
+6ab10eb3b23ba_student_resource/
+
+# Intermediate pipeline cache (huge, regenerable by running the pipeline)
+work/
+work_v4/
+output/
+output_*/
+
+# Submission archives (over GitHub's 100MB limit or redundant with tracked files)
+*.zip
+submissions/*/candidate_pairs.tsv
+
+# Python
+__pycache__/
+*.pyc

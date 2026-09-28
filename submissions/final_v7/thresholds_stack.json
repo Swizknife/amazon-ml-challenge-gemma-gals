@@ -1,0 +1,17 @@
+{
+  "US": {
+    "t_single": 0.55,
+    "t_match": 0.2,
+    "miss_mass": 0.3
+  },
+  "India": {
+    "t_single": 0.55,
+    "t_match": 0.3,
+    "miss_mass": 0.34
+  },
+  "_default": {
+    "t_single": 0.65,
+    "t_match": 0.3,
+    "miss_mass": 0.34
+  }
+}

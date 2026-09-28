@@ -1,0 +1,12 @@
+# Python 3.13 (tested on Windows 11, 31 GB RAM, 12-thread CPU, no GPU)
+polars==1.44.2
+rapidfuzz==3.14.6
+lightgbm==4.7.0
+numpy==2.2.6
+indic-transliteration==2.3.82
+# Optional (only for the ER_USE_EMB=1 embedding experiment in embed.py; not used by the final submission):
+# model2vec==0.9.0      (MIT; model minishlab/potion-multilingual-128M, MIT, 128M params)
+# faiss-cpu==1.15.1     (MIT)
+# Optional (only for xenc.py, the cross-encoder stage; not used by the final submission):
+# torch>=2.8       (BSD-3; CPU wheel: --index-url https://download.pytorch.org/whl/cpu)
+# transformers>=4.48   (Apache-2.0; model jhu-clsp/mmBERT-small, MIT, 140M params)
