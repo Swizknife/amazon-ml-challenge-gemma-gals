@@ -4,6 +4,7 @@
 # Intermediate pipeline cache (huge, regenerable by running the pipeline)
 work/
 work_v4/
+work_v10/
 output/
 output_*/
 

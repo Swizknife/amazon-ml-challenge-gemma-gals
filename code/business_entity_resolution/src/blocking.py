@@ -10,6 +10,11 @@ Key kinds (a pair of records is a candidate if they share any key):
   hw  the full structured house number ("2-1" for "B-2/1") + a rare address word
   nr  a core-name token with doc. freq <= 300; on the Source-2/3 side only for
       records whose address has no number (their only way to be found)
+  ca  (ER_CA=1) the whole core name without spaces + one of the record's 2 rarest
+      address words: common names found within one locality (India lost 41k true
+      pairs whose identical name is shared by 6+ businesses)
+With ER_REV=r, each record also keeps its r best S1 candidates (reverse retrieval), so a
+record that ranks below the K kept by its true S1 survives when that S1 is its own best.
 "Rarest" only considers tokens seen in at least 2 records: a token seen once is
 usually a typo and can never be shared, so picking it would waste the key.
 Every key block larger than its cap is skipped. The pre-score of a pair is the sum
@@ -26,8 +31,8 @@ import rules
 
 K_PER_SOURCE = config.K_PER_SOURCE
 CAPS = {k: int(v * config.CAP_MULT) for k, v in
-        {"nw": 200, "np": 200, "nt": 30, "cc": 50, "ap": 200, "nn": 200, "hw": 200, "nr": 300}.items()}
-KIND_BITS = {"nw": 1, "np": 2, "nt": 4, "cc": 8, "ap": 16, "nn": 32, "hw": 64, "nr": 128, "em": 256}
+        {"nw": 200, "np": 200, "nt": 30, "cc": 50, "ap": 200, "nn": 200, "hw": 200, "nr": 300, "ca": 200}.items()}
+KIND_BITS = {"nw": 1, "np": 2, "nt": 4, "cc": 8, "ap": 16, "nn": 32, "hw": 64, "nr": 128, "em": 256, "ca": 512}
 S1_CAP = int(200 * config.CAP_MULT)
 _GENERIC = sorted(rules.ADDR_GENERIC)
 
@@ -81,6 +86,10 @@ def keys(f, dfw, dfn, s1_side):
             .select("i", key=pl.lit("hw:") + pl.col("hn") + "|" + pl.col("t")),
         rare3.select("i", key=pl.lit("nr:") + pl.col("t")),
     ]
+    if config.USE_CA:
+        parts.append(f.filter(pl.col("cc").str.len_chars() >= 4).select("i", "cc")
+                     .join(words.group_by("i", maintain_order=True).head(2).select("i", "t"), on="i")
+                     .select("i", key=pl.lit("ca:") + pl.col("cc") + "|" + pl.col("t")))
     return pl.concat(parts).unique()
 
 
@@ -107,7 +116,9 @@ def _truth_pairs(split, s1):
     return gt.join(ids1, on="s1").join(ids2, on="id").select("i1", "src", "i2")
 
 
-_W_KINDS = {k: b for k, b in KIND_BITS.items() if k != "em"}
+# per-kind evidence columns fed to the rankers; "ca" only when enabled, since the saved
+# stage-0/1 rankers were fitted without it
+_W_KINDS = {k: b for k, b in KIND_BITS.items() if k != "em" and (k != "ca" or config.CA_RANK)}
 W_COLS = [f"w_{k}" for k in _W_KINDS]
 STAGE0_FEATS = ["pre", "nk", "n_union", "r_pre", "rk_pre", *W_COLS]
 
@@ -166,13 +177,20 @@ def _union(k1_chunk, k2):
                           rk_pre=pl.col("pre").rank("ordinal", descending=True).over("i1").cast(pl.Float32)))
 
 
-def block_split(split, k_per_source=K_PER_SOURCE, chunk=200_000, sample=None, write=True):
+def block_split(split, k_per_source=K_PER_SOURCE, chunk=200_000, sample=None, write=True, rev=None,
+                diag=False, countries=None):
     """Candidates of a split. The K kept per S1 and source are chosen by the pre-score,
     or -- when the learned rankers exist in work/ -- by stage 0 (block evidence, keeps
-    K0) followed by stage 1 (block evidence + cheap string similarities).
+    K0) followed by stage 1 (block evidence + cheap string similarities). With rev=r
+    (default config.REV), each record's r best S1 candidates are kept as well.
     With `sample` (S1 row ids), returns labelled pairs of those S1 for ranker training:
     the full union if stage 0 is not trained yet, else the stage-0 shortlist with the
-    cheap similarities (training data for stage 1)."""
+    cheap similarities (training data for stage 1).
+    diag=True (with write=False) reports recall at every step -- union (with / without the
+    ca key), stage-0 shortlist, the K kept, and K kept + reverse top-r for r = 1..3 -- for
+    the `countries` given (default all)."""
+    rev = config.REV if rev is None else rev
+    rev_max = max(rev, 3 if diag else 0)
     t0 = time.time()
     cols = ["country", "core", "cc", "ad", "adf", "nums", "hn", "hmain"]
     s1 = pl.read_parquet(config.norm_path(split, 1)).select(cols).with_row_index("i")
@@ -184,9 +202,11 @@ def block_split(split, k_per_source=K_PER_SOURCE, chunk=200_000, sample=None, wr
         ranker = lgb.Booster(model_file=str(stage0_path()))
         if sample is None and stage1_path().exists():
             rank1 = lgb.Booster(model_file=str(stage1_path()))
-    diag = []
+    hits, rev_hits = [], []
     out = []
     for country in sorted(s1["country"].unique().to_list()):
+        if countries and country not in countries:
+            continue
         f1 = s1.filter(pl.col("country") == country)
         fo = {k: v.filter(pl.col("country") == country) for k, v in oth.items()}
         dfw, dfn = _doc_freq([f1, *fo.values()], "ad"), _doc_freq([f1, *fo.values()], "core")
@@ -202,6 +222,8 @@ def block_split(split, k_per_source=K_PER_SOURCE, chunk=200_000, sample=None, wr
                 b=pl.col("key").str.slice(0, 2).replace_strict(KIND_BITS, return_dtype=pl.UInt16))
             rec2 = _rec(f, 2)
             ids = f1["i"]
+            cols = ["i1", "i2", "pre", "nk", "kinds", *(W_COLS if ranker is not None else [])]
+            near_all, near_full = [], []
             for start in range(0, f1.height, chunk):
                 lo, hi = ids[start], ids[min(start + chunk, f1.height) - 1]
                 pairs = _union(k1.filter(pl.col("i1").is_between(lo, hi)), k2)
@@ -217,26 +239,56 @@ def block_split(split, k_per_source=K_PER_SOURCE, chunk=200_000, sample=None, wr
                     out.append(pairs.join(lab, on=["i1", "i2"], how="left")
                                .with_columns(pl.col("y").fill_null(0), src=pl.lit(src, pl.Int8)))
                     continue
-                top = (pairs.with_columns(sc=score)
-                       .filter(pl.col("sc").rank("ordinal", descending=True).over("i1") <= k_per_source)
-                       .select("i1", "i2", "pre", "nk", "kinds", *(W_COLS if ranker is not None else [])))
+                scored = pairs.with_columns(sc=score)
+                scored = scored.with_columns(
+                    fwd=pl.col("sc").rank("ordinal", descending=True).over("i1") <= k_per_source)
+                top = scored.filter(pl.col("fwd")).select(cols)
                 out.append(top.with_columns(src=pl.lit(src, pl.Int8)))
-                pairs = full
+                if rev_max:
+                    # a record's global top-r among all S1 is inside some chunk's top-r, so keeping
+                    # each chunk's top-rev_max per record is enough for the global selection below
+                    near = scored.filter(pl.col("sc").rank("ordinal", descending=True).over("i2") <= rev_max)
+                    near_all.append(near.select("i1", "i2", "sc", "fwd"))
+                    near_full.append(near.filter(~pl.col("fwd")).select(cols))
                 if truth is not None:
                     tt = truth.filter((pl.col("src") == src) & pl.col("i1").is_between(lo, hi)
                                       & pl.col("i1").is_in(ids.implode()))
-                    diag.append((country, src, tt.height, pairs.join(tt, on=["i1", "i2"]).height,
-                                 top.join(tt, on=["i1", "i2"]).height))
+                    found = lambda fr: fr.join(tt, on=["i1", "i2"]).height
+                    hits.append((country, src, tt.height, found(full),
+                                 found(full.filter((pl.col("kinds") & 511) > 0)), found(pairs), found(top)))
+            if rev_max and near_all:
+                g = (pl.concat(near_all)
+                     .with_columns(rr=pl.col("sc").rank("ordinal", descending=True).over("i2")))
+                if rev:
+                    add = g.filter((pl.col("rr") <= rev) & ~pl.col("fwd")).select("i1", "i2")
+                    extra = add.join(pl.concat(near_full).unique(["i1", "i2"]), on=["i1", "i2"])
+                    out.append(extra.with_columns(src=pl.lit(src, pl.Int8)))
+                if diag and truth is not None:
+                    tc = truth.filter((pl.col("src") == src) & pl.col("i1").is_in(ids.implode()))
+                    for r in (1, 2, 3):
+                        a = g.filter((pl.col("rr") <= r) & ~pl.col("fwd"))
+                        rev_hits.append((country, src, r, a.height, a.join(tc, on=["i1", "i2"]).height))
             print(f"  {split} {country} S{src}: done ({time.time()-t0:.0f}s)", flush=True)
     if sample is not None:
         return pl.concat(out)
-    if diag:
-        d = (pl.DataFrame(diag, schema=["country", "src", "true", "union", "top"], orient="row")
-             .group_by("country", "src").sum().sort("country", "src")
-             .with_columns(union_recall=pl.col("union") / pl.col("true"), top_recall=pl.col("top") / pl.col("true")))
+    if hits:
+        d = (pl.DataFrame(hits, schema=["country", "src", "true", "union", "union_no_ca", "shortlist", "top"],
+                          orient="row")
+             .group_by("country", "src").sum().sort("country", "src"))
+        for c in ("union", "union_no_ca", "shortlist", "top"):
+            d = d.with_columns((pl.col(c) / pl.col("true")).alias(f"{c}_recall"))
         print(d)
-        print(f"overall: union recall {d['union'].sum() / d['true'].sum():.4f} | kept recall "
-              f"{d['top'].sum() / d['true'].sum():.4f} | kept by {'stage-0+1 rankers' if rank1 is not None else 'stage-0 ranker' if ranker is not None else 'pre-score'}")
+        tot = d["true"].sum()
+        print(f"overall: union recall {d['union'].sum() / tot:.4f} (without ca {d['union_no_ca'].sum() / tot:.4f}) | "
+              f"shortlist {d['shortlist'].sum() / tot:.4f} | kept {d['top'].sum() / tot:.4f} | kept by "
+              f"{'stage-0+1 rankers' if rank1 is not None else 'stage-0 ranker' if ranker is not None else 'pre-score'}")
+        if rev_hits:
+            n_s1 = s1.filter(pl.col("country").is_in(countries)).height if countries else s1.height
+            rv = pl.DataFrame(rev_hits, schema=["country", "src", "r", "added", "added_true"], orient="row")
+            for r in (1, 2, 3):
+                x = rv.filter(pl.col("r") == r)
+                print(f"  + reverse top-{r}: recall {(d['top'].sum() + x['added_true'].sum()) / tot:.4f} "
+                      f"(+{x['added_true'].sum() / tot:.4f}) for +{x['added'].sum() / n_s1:.2f} candidates per S1")
     cands = pl.concat(out).select("i1", "src", "i2", "pre", "nk", "kinds", *(W_COLS if ranker is not None else []))
     if write:
         path = config.WORK_DIR / "cands" / f"{split}.parquet"

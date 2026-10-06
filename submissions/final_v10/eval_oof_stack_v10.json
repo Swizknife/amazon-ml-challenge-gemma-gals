@@ -1,0 +1,570 @@
+{
+  "artifact": "oof_stack_v10",
+  "countries": {
+    "US": {
+      "thresholds": {
+        "t_single": 0.55,
+        "t_match": 0.2,
+        "miss_mass": 0.17
+      },
+      "decompose": {
+        "F05": 0.9851362189703221,
+        "singleton_merged": 0.0007154551148241242,
+        "emptied_findable": 0.001799592485228156,
+        "emptied_lost": 0.0012057722948883866,
+        "false_pairs": 0.0016362959289450752,
+        "missed_candidates": 0.004941647119799029,
+        "lost_candidates": 0.004565018085993309,
+        "candidates": 0.005770790380881696,
+        "model_recall": 0.006741239605027185,
+        "false_merges": 0.0023517510437691992,
+        "sum_check": -1.8821749714348357e-16,
+        "entities": 1323633,
+        "singletons": 73896,
+        "singletons_merged": 947,
+        "wrong_pairs": 10759,
+        "correct_pairs": 4397379,
+        "missed_candidate_pairs": 95138,
+        "lost_pairs": 86005
+      },
+      "ablate": {
+        "full": {
+          "F05": 0.9851362189703221,
+          "wrong_pairs": 10759,
+          "correct_pairs": 4397379,
+          "singletons_merged": 947,
+          "false_merges": 0.0023517510437691992,
+          "model_recall": 0.006741239605027185
+        },
+        "no singleton gate": {
+          "F05": 0.984665284007443,
+          "wrong_pairs": 12235,
+          "correct_pairs": 4398191,
+          "singletons_merged": 2321,
+          "false_merges": 0.003391985677454586,
+          "model_recall": 0.006157080611399706
+        },
+        "no minimum p": {
+          "F05": 0.9851362189703221,
+          "wrong_pairs": 10759,
+          "correct_pairs": 4397379,
+          "singletons_merged": 947,
+          "false_merges": 0.0023517510437691992,
+          "model_recall": 0.006741239605027185
+        },
+        "no missed-match prior": {
+          "F05": 0.9851317153812837,
+          "wrong_pairs": 10452,
+          "correct_pairs": 4396455,
+          "singletons_merged": 947,
+          "false_merges": 0.0022852365068281185,
+          "model_recall": 0.006812257731006528
+        },
+        "no one-owner": {
+          "F05": 0.9851292851199148,
+          "wrong_pairs": 10875,
+          "correct_pairs": 4397593,
+          "singletons_merged": 950,
+          "false_merges": 0.002379596738330967,
+          "model_recall": 0.006720327760872374
+        }
+      },
+      "ceiling": 0.9941904080504083,
+      "tuned_in_sample": 0.9851362189703219,
+      "honest": {
+        "folds": {
+          "0": {
+            "thr": {
+              "t_single": 0.55,
+              "t_match": 0.2,
+              "miss_mass": 0.17
+            },
+            "tuned_on_own_fold": 0.9851394128284315,
+            "scored_on_other": 0.9851330326847084
+          },
+          "1": {
+            "thr": {
+              "t_single": 0.55,
+              "t_match": 0.2,
+              "miss_mass": 0.34
+            },
+            "tuned_on_own_fold": 0.9851355806922948,
+            "scored_on_other": 0.9851237867972409
+          }
+        },
+        "honest": 0.9851284152278768
+      }
+    },
+    "India": {
+      "thresholds": {
+        "t_single": 0.55,
+        "t_match": 0.2,
+        "miss_mass": 0.17
+      },
+      "decompose": {
+        "F05": 0.9820401970409466,
+        "singleton_merged": 0.0008424027500373646,
+        "emptied_findable": 0.0020154259342291788,
+        "emptied_lost": 0.001714244305855605,
+        "false_pairs": 0.0021794300358807944,
+        "missed_candidates": 0.005107605000253615,
+        "lost_candidates": 0.0061006949327970595,
+        "candidates": 0.007814939238652664,
+        "model_recall": 0.007123030934482794,
+        "false_merges": 0.003021832785918159,
+        "sum_check": -1.9949319973733282e-16,
+        "entities": 883188,
+        "singletons": 49351,
+        "singletons_merged": 744,
+        "wrong_pairs": 9469,
+        "correct_pairs": 2918267,
+        "missed_candidate_pairs": 65484,
+        "lost_pairs": 76092
+      },
+      "ablate": {
+        "full": {
+          "F05": 0.9820401970409466,
+          "wrong_pairs": 9469,
+          "correct_pairs": 2918267,
+          "singletons_merged": 744,
+          "false_merges": 0.003021832785918159,
+          "model_recall": 0.007123030934482794
+        },
+        "no singleton gate": {
+          "F05": 0.9816059180834366,
+          "wrong_pairs": 10584,
+          "correct_pairs": 2918988,
+          "singletons_merged": 1777,
+          "false_merges": 0.004195595085426053,
+          "model_recall": 0.006355996730131168
+        },
+        "no minimum p": {
+          "F05": 0.9820401970409466,
+          "wrong_pairs": 9469,
+          "correct_pairs": 2918267,
+          "singletons_merged": 744,
+          "false_merges": 0.003021832785918159,
+          "model_recall": 0.007123030934482794
+        },
+        "no missed-match prior": {
+          "F05": 0.9820376143824151,
+          "wrong_pairs": 9236,
+          "correct_pairs": 2917572,
+          "singletons_merged": 744,
+          "false_merges": 0.0029478738562434678,
+          "model_recall": 0.007199572522688825
+        },
+        "no one-owner": {
+          "F05": 0.9820336755446325,
+          "wrong_pairs": 9558,
+          "correct_pairs": 2918447,
+          "singletons_merged": 749,
+          "false_merges": 0.00305166041314474,
+          "model_recall": 0.007099724803570162
+        }
+      },
+      "ceiling": 0.9921198551494461,
+      "tuned_in_sample": 0.9820401970409465,
+      "honest": {
+        "folds": {
+          "0": {
+            "thr": {
+              "t_single": 0.55,
+              "t_match": 0.2,
+              "miss_mass": 0.17
+            },
+            "tuned_on_own_fold": 0.9820179825158893,
+            "scored_on_other": 0.9820624055301856
+          },
+          "1": {
+            "thr": {
+              "t_single": 0.55,
+              "t_match": 0.2,
+              "miss_mass": 0.17
+            },
+            "tuned_on_own_fold": 0.9820624055301856,
+            "scored_on_other": 0.9820179825158893
+          }
+        },
+        "honest": 0.9820401970409464
+      }
+    }
+  },
+  "weighted_F05": 0.9834334069091656,
+  "calibration": {
+    "house": [
+      {
+        "country": "India",
+        "house": "both missing",
+        "pairs": 328219,
+        "true_rate": 0.6511902114137207,
+        "mean_p": 0.6502867937088013,
+        "gap": -0.0009034241084009409,
+        "brier": 0.009858230128884315,
+        "recall05": 0.9839238676292383,
+        "missed": 3436,
+        "share_missed": 0.02787399914009199
+      },
+      {
+        "country": "India",
+        "house": "differ",
+        "pairs": 1483216,
+        "true_rate": 0.3715305120764609,
+        "mean_p": 0.3717136085033417,
+        "gap": 0.00018311092571821064,
+        "brier": 0.007313071750104427,
+        "recall05": 0.9863953108554422,
+        "missed": 7497,
+        "share_missed": 0.060818210580113406
+      },
+      {
+        "country": "India",
+        "house": "one missing",
+        "pairs": 1319012,
+        "true_rate": 0.13096393361091482,
+        "mean_p": 0.13014927506446838,
+        "gap": -0.0008146550972014666,
+        "brier": 0.023611117154359818,
+        "recall05": 0.8075812044482266,
+        "missed": 33239,
+        "share_missed": 0.2696460586197665
+      },
+      {
+        "country": "India",
+        "house": "same",
+        "pairs": 2362400,
+        "true_rate": 0.8661594141550966,
+        "mean_p": 0.8664920330047607,
+        "gap": 0.0003326354781165719,
+        "brier": 0.003697390900924802,
+        "recall05": 0.9971674530780001,
+        "missed": 5796,
+        "share_missed": 0.04701912078462549
+      },
+      {
+        "country": "US",
+        "house": "both missing",
+        "pairs": 4,
+        "true_rate": 0.75,
+        "mean_p": 0.7504582405090332,
+        "gap": 0.0004582456313073635,
+        "brier": 9.605112154531525e-07,
+        "recall05": 1.0,
+        "missed": 0,
+        "share_missed": 0.0
+      },
+      {
+        "country": "US",
+        "house": "differ",
+        "pairs": 1861828,
+        "true_rate": 0.25791695043795665,
+        "mean_p": 0.2573150098323822,
+        "gap": -0.0006019374704919755,
+        "brier": 0.008889877237379551,
+        "recall05": 0.9741626873970475,
+        "missed": 12407,
+        "share_missed": 0.10064979840835894
+      },
+      {
+        "country": "US",
+        "house": "one missing",
+        "pairs": 1666828,
+        "true_rate": 0.29615053262844154,
+        "mean_p": 0.29645442962646484,
+        "gap": 0.0003038930881302804,
+        "brier": 0.029806897044181824,
+        "recall05": 0.8879286594061974,
+        "missed": 55322,
+        "share_missed": 0.4487908557707128
+      },
+      {
+        "country": "US",
+        "house": "same",
+        "pairs": 3737251,
+        "true_rate": 0.941516906410621,
+        "mean_p": 0.9417470693588257,
+        "gap": 0.00023016885097604245,
+        "brier": 0.0021427625324577093,
+        "recall05": 0.9984164538741035,
+        "missed": 5572,
+        "share_missed": 0.045201956696330786
+      }
+    ],
+    "ambiguity": [
+      {
+        "country": "India",
+        "ambiguity": "1",
+        "pairs": 2054651,
+        "true_rate": 0.6769967259646529,
+        "mean_p": 0.6768621802330017,
+        "gap": -0.0001345542841590941,
+        "brier": 0.00613201130181551,
+        "recall05": 0.9936412287058445,
+        "missed": 8845,
+        "share_missed": 0.07175364446860118
+      },
+      {
+        "country": "India",
+        "ambiguity": "2",
+        "pairs": 397798,
+        "true_rate": 0.651240076621803,
+        "mean_p": 0.6502498984336853,
+        "gap": -0.0009901850717142224,
+        "brier": 0.015664085745811462,
+        "recall05": 0.9754691927029051,
+        "missed": 6355,
+        "share_missed": 0.05155391866568237
+      },
+      {
+        "country": "India",
+        "ambiguity": "3-5",
+        "pairs": 437120,
+        "true_rate": 0.6139824304538799,
+        "mean_p": 0.613883376121521,
+        "gap": -9.908350330078974e-05,
+        "brier": 0.019439391791820526,
+        "recall05": 0.9650016394419936,
+        "missed": 9393,
+        "share_missed": 0.0761992066131793
+      },
+      {
+        "country": "India",
+        "ambiguity": "6+",
+        "pairs": 2603278,
+        "true_rate": 0.40921983745109053,
+        "mean_p": 0.4093734920024872,
+        "gap": 0.00015365912986453623,
+        "brier": 0.01023054588586092,
+        "recall05": 0.976180709331436,
+        "missed": 25375,
+        "share_missed": 0.20585061937713453
+      },
+      {
+        "country": "US",
+        "ambiguity": "1",
+        "pairs": 3392225,
+        "true_rate": 0.6910113568528031,
+        "mean_p": 0.6907036304473877,
+        "gap": -0.00030773598700761795,
+        "brier": 0.005149370525032282,
+        "recall05": 0.99431372666128,
+        "missed": 13329,
+        "share_missed": 0.10812937559321482
+      },
+      {
+        "country": "US",
+        "ambiguity": "2",
+        "pairs": 741452,
+        "true_rate": 0.6622424647853131,
+        "mean_p": 0.6611237525939941,
+        "gap": -0.0011186905903741717,
+        "brier": 0.015372802503407001,
+        "recall05": 0.9751680681681639,
+        "missed": 12193,
+        "share_missed": 0.09891375771686312
+      },
+      {
+        "country": "US",
+        "ambiguity": "3-5",
+        "pairs": 962992,
+        "true_rate": 0.6363386196354694,
+        "mean_p": 0.6367202997207642,
+        "gap": 0.0003816569223999977,
+        "brier": 0.01913129724562168,
+        "recall05": 0.9659638146246098,
+        "missed": 20857,
+        "share_missed": 0.16919906870340473
+      },
+      {
+        "country": "US",
+        "ambiguity": "6+",
+        "pairs": 2169242,
+        "true_rate": 0.48156959896590606,
+        "mean_p": 0.48237720131874084,
+        "gap": 0.0008075939258560538,
+        "brier": 0.012425136752426624,
+        "recall05": 0.9742284670044542,
+        "missed": 26922,
+        "share_missed": 0.21840040886191983
+      }
+    ],
+    "addr_empty": [
+      {
+        "country": "India",
+        "addr_empty": false,
+        "pairs": 4248981,
+        "true_rate": 0.6784859711069549,
+        "mean_p": 0.6787394285202026,
+        "gap": 0.00025343403103761375,
+        "brier": 0.005221973638981581,
+        "recall05": 0.9947913089507207,
+        "missed": 15016,
+        "share_missed": 0.12181489263318432
+      },
+      {
+        "country": "India",
+        "addr_empty": true,
+        "pairs": 1243866,
+        "true_rate": 0.08109957181882936,
+        "mean_p": 0.07998169958591461,
+        "gap": -0.001117874402552843,
+        "brier": 0.02554336190223694,
+        "recall05": 0.6535186415139229,
+        "missed": 34952,
+        "share_missed": 0.28354249649141305
+      },
+      {
+        "country": "US",
+        "addr_empty": false,
+        "pairs": 6026803,
+        "true_rate": 0.717800133835468,
+        "mean_p": 0.7176524996757507,
+        "gap": -0.00014766344975214452,
+        "brier": 0.00437350245192647,
+        "recall05": 0.9953798392987582,
+        "missed": 19987,
+        "share_missed": 0.16214133318190296
+      },
+      {
+        "country": "US",
+        "addr_empty": true,
+        "pairs": 1239108,
+        "true_rate": 0.13435229213272773,
+        "mean_p": 0.13526906073093414,
+        "gap": 0.000916766410227865,
+        "brier": 0.03864408656954765,
+        "recall05": 0.6797515572721757,
+        "missed": 53314,
+        "share_missed": 0.43250127769349955
+      }
+    ],
+    "empty_addr_same_name": [
+      {
+        "country": "India",
+        "ambiguity": "1",
+        "pairs": 48133,
+        "true_rate": 0.9750690794257578,
+        "mean_p": 0.974355936050415,
+        "gap": -0.0007131690508686006,
+        "brier": 0.016438297927379608,
+        "recall05": 0.9963778151833464,
+        "missed": 170,
+        "share_missed": 0.0013790977455808027
+      },
+      {
+        "country": "India",
+        "ambiguity": "2",
+        "pairs": 18856,
+        "true_rate": 0.47353627492575306,
+        "mean_p": 0.4522871971130371,
+        "gap": -0.021249080076813698,
+        "brier": 0.1834668219089508,
+        "recall05": 0.5413820136633442,
+        "missed": 4095,
+        "share_missed": 0.033220030989137575
+      },
+      {
+        "country": "India",
+        "ambiguity": "3-5",
+        "pairs": 37141,
+        "true_rate": 0.25481274063703185,
+        "mean_p": 0.2510228455066681,
+        "gap": -0.0037898856680840254,
+        "brier": 0.14293645322322845,
+        "recall05": 0.2852916314454776,
+        "missed": 6764,
+        "share_missed": 0.05487186559475618
+      },
+      {
+        "country": "India",
+        "ambiguity": "6+",
+        "pairs": 789756,
+        "true_rate": 0.02219039804699173,
+        "mean_p": 0.022095799446105957,
+        "gap": -9.459899592911825e-05,
+        "brier": 0.020130181685090065,
+        "recall05": 0.028131241084165478,
+        "missed": 17032,
+        "share_missed": 0.13816936942783667
+      },
+      {
+        "country": "US",
+        "ambiguity": "1",
+        "pairs": 78728,
+        "true_rate": 0.9664160146326592,
+        "mean_p": 0.9695433974266052,
+        "gap": 0.0031273888889700174,
+        "brier": 0.01940896362066269,
+        "recall05": 0.9968981651858472,
+        "missed": 236,
+        "share_missed": 0.0019145121644533498
+      },
+      {
+        "country": "US",
+        "ambiguity": "2",
+        "pairs": 34929,
+        "true_rate": 0.4614217412465287,
+        "mean_p": 0.44646498560905457,
+        "gap": -0.014956741593778133,
+        "brier": 0.19634929299354553,
+        "recall05": 0.5070422535211268,
+        "missed": 7945,
+        "share_missed": 0.06445253875670282
+      },
+      {
+        "country": "US",
+        "ambiguity": "3-5",
+        "pairs": 78870,
+        "true_rate": 0.2512742487637885,
+        "mean_p": 0.255281925201416,
+        "gap": 0.0040076719596982,
+        "brier": 0.1527688056230545,
+        "recall05": 0.2483096175194268,
+        "missed": 14897,
+        "share_missed": 0.12084952421127776
+      },
+      {
+        "country": "US",
+        "ambiguity": "6+",
+        "pairs": 547755,
+        "true_rate": 0.03410648921506878,
+        "mean_p": 0.035437002778053284,
+        "gap": 0.0013305122265592217,
+        "brier": 0.02916821651160717,
+        "recall05": 0.05358098704635478,
+        "missed": 17681,
+        "share_missed": 0.1434342778800834
+      }
+    ]
+  },
+  "vs": {
+    "artifact": "oof_stack_v7",
+    "weighted_F05": 0.9789898410965046,
+    "clusters": {
+      "kind": "country_name",
+      "largest_share": 0.2223016728588318
+    },
+    "weighted_delta": 0.00444356581266084,
+    "weighted_ci95": [
+      0.004337770124319849,
+      0.004540477287823978
+    ],
+    "draws": 1000,
+    "per_country": {
+      "US": {
+        "delta": 0.001925313298258877,
+        "ci95": [
+          0.0018362638794157894,
+          0.002013975998915462
+        ]
+      },
+      "India": {
+        "delta": 0.006503954233535172,
+        "ci95": [
+          0.006332374508163105,
+          0.006671159581248086
+        ]
+      }
+    }
+  }
+}

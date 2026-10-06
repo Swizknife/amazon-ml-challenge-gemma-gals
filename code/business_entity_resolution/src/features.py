@@ -125,7 +125,8 @@ def pair_features(ch):
 
 KEYS = ["i1", "src", "i2"]
 CTX = ["pre", "nk", "rank1", "rank1s", "rel1", "rank2", "rel2", "n2"]
-KIND_BITS = {"nw": 1, "np": 2, "nt": 4, "cc": 8, "ap": 16, "nn": 32, "hw": 64, "nr": 128, "em": 256}  # mirrors blocking.KIND_BITS
+KIND_BITS = {"nw": 1, "np": 2, "nt": 4, "cc": 8, "ap": 16, "nn": 32, "hw": 64, "nr": 128, "em": 256,
+             "ca": 512}  # mirrors blocking.KIND_BITS
 W_COLS = [f"w_{k}" for k in KIND_BITS if k != "em"]  # per-key-kind evidence (v4 blocking), when present
 
 
@@ -167,7 +168,8 @@ def build(cands, s1, so, chunk=1_500_000, emb=None):
             has_ref=(ch["core_r"] != "").cast(pl.Int8))
         parts = [ch.select(*KEYS, *CTX, *[c for c in W_COLS if c in ch.columns]), feats, cons]
         if "kinds" in ch.columns:  # which blocking key kinds the pair shared
-            bits = KIND_BITS if emb is not None else {k: v for k, v in KIND_BITS.items() if k != "em"}
+            bits = {k: v for k, v in KIND_BITS.items()
+                    if (k != "em" or emb is not None) and (k != "ca" or config.USE_CA)}
             parts.append(ch.select(**{f"k_{name}": (pl.col("kinds") & bit > 0).cast(pl.Int8)
                                       for name, bit in bits.items()}))
         if emb is not None:

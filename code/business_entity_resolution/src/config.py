@@ -23,6 +23,15 @@ CAP_MULT = float(os.environ.get("ER_CAP_MULT", "1"))      # multiplier on blocki
 N_TRAIN = int(os.environ.get("ER_N_TRAIN", "400000"))     # S1 entities used to fit the matcher
 OOF_FIT = int(os.environ.get("ER_OOF_FIT", "400000"))     # S1 entities per out-of-fold model
 
+# v10 candidate generation (off by default = the v7 pipeline):
+# ER_REV=r also keeps each record's r best S1 candidates (reverse retrieval), on top of the
+# K best records per S1; ER_CA=1 adds the name x locality key ("ca"), which needs rankers
+# retrained with its evidence column (blocking.py stage0 / stage1).
+REV = int(os.environ.get("ER_REV", "0"))
+USE_CA = os.environ.get("ER_CA", "0") == "1"
+# ca evidence as a ranker input; ER_CA_RANK=0 keeps the saved v7 rankers usable (diagnostics)
+CA_RANK = USE_CA and os.environ.get("ER_CA_RANK", "1") == "1"
+
 
 def artifact(name, ext):
     return WORK_DIR / f"{name}{TAG}.{ext}"

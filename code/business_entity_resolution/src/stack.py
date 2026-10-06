@@ -152,6 +152,31 @@ def features(pairs, so):
     return X.with_columns(src_f=pl.col("src").cast(pl.Float32))
 
 
+XENC_FEATS = ["ce", "ce_rank", "ce_n", "ce_gap_i1", "ce_rival", "ce_margin"]
+
+
+def add_xenc(X, ce):
+    """Cross-encoder score (kaggle/xenc_kaggle.py) on the uncertain band, with its rank / gap within
+    the entity and against rival entities for the same record; null outside the band."""
+    b = X.select(KEYS).join(ce.select(*KEYS, ce=pl.col("ce").cast(pl.Float32)), on=KEYS)
+    top2 = pl.col("ce").top_k(2).min().over("src", "i2")
+    m1 = pl.col("ce").max().over("src", "i2")
+    n = pl.len().over("src", "i2")
+    b = b.with_columns(
+        ce_rank=pl.col("ce").rank("ordinal", descending=True).over("i1").cast(pl.Float32),
+        ce_n=pl.len().over("i1").cast(pl.Float32),
+        ce_gap_i1=(pl.col("ce") - pl.col("ce").max().over("i1")).cast(pl.Float32),
+        ce_rival=pl.when(n == 1).then(-1.0).when(pl.col("ce") >= m1).then(top2).otherwise(m1).cast(pl.Float32))
+    b = b.with_columns(ce_margin=(pl.col("ce") - pl.col("ce_rival")).cast(pl.Float32))
+    return X.join(b.select(*KEYS, *XENC_FEATS), on=KEYS, how="left")
+
+
+def shift(p, bias):
+    """p' = sigmoid(logit(p) + bias): a calibration offset for countries without labels."""
+    z = np.log(np.clip(p, 1e-6, 1 - 1e-6) / np.clip(1 - p, 1e-6, 1))
+    return (1 / (1 + np.exp(-(z + bias)))).astype(np.float32)
+
+
 def evaluate(oof, truth_idx, by_c, thr):
     res = {}
     for c, ids in by_c.items():
@@ -190,7 +215,8 @@ def weighted(res):
 
 
 def main(sample_s1=None, write=True, second=None, baseline=None, suffix="_stack", wide=False, primary="mean",
-         fixed_thr=None, min_gain=MIN_GAIN, iterate=False, unseen=None, rounds=ROUNDS, leaves=None, mini_tune=False):
+         fixed_thr=None, min_gain=MIN_GAIN, iterate=False, unseen=None, rounds=ROUNDS, leaves=None, mini_tune=False,
+         save_oof=False, xenc=None, unseen_bias=None):
     params = dict(PARAMS, num_leaves=leaves) if leaves else PARAMS
     s1 = pl.read_parquet(config.norm_path("train", 1), columns=["country"]).with_row_index("i1")
     so = other_records("train")
@@ -226,6 +252,11 @@ def main(sample_s1=None, write=True, second=None, baseline=None, suffix="_stack"
     log(f"pruned OOF: {oof.height} pairs; base F0.5 {base} weighted {weighted(base):.5f}")
 
     X = features(oof, so)
+    ce_oof = pl.read_parquet(config.artifact(xenc, "parquet")) if xenc else None
+    if xenc:
+        X = add_xenc(X, ce_oof)
+        feats += XENC_FEATS
+        log(f"cross-encoder scores joined: {X['ce'].is_not_null().sum()} band pairs")
     log(f"features built: {X.height} rows x {len(feats)}")
     p2 = np.zeros(X.height, np.float32)
     boosters = []
@@ -262,6 +293,8 @@ def main(sample_s1=None, write=True, second=None, baseline=None, suffix="_stack"
     if iterate:  # iterative collective classification: rebuild the neighbour features from round-1 p
         keep = [c for c in ("p_first", "p_second") if c in X.columns]
         R2 = features(X.select(*KEYS, "y", "fold", *keep, p_r1=pl.col("p"), p=pl.Series(p2, dtype=pl.Float32)), so)
+        if xenc:
+            R2 = add_xenc(R2, ce_oof)
         feats2 = feats + ["p_r1"]
         p3 = np.zeros(R2.height, np.float32)
         fold2 = R2["fold"].to_numpy()
@@ -288,6 +321,9 @@ def main(sample_s1=None, write=True, second=None, baseline=None, suffix="_stack"
         else:
             log("round 2 not better; keeping round 1")
             boosters2 = None
+    if save_oof:  # final out-of-fold probabilities, for evaluate.py
+        (oof2 if boosters2 else new_oof).write_parquet(config.artifact(f"oof_stack{suffix}", "parquet"))
+        log(f"saved oof_stack{suffix}")
     ref = baseline if baseline is not None else weighted(base)  # e.g. the adopted stacker's score
     gain = weighted(new) - ref
     report = dict(base=base, new=new, weighted_base=weighted(base), reference=ref, weighted_new=weighted(new),
@@ -309,19 +345,34 @@ def main(sample_s1=None, write=True, second=None, baseline=None, suffix="_stack"
     if second:
         test = blend(test, pl.read_parquet(config.artifact(second.replace("oof_", "scored_test_"), "parquet")), primary)
     Xt = features(test, t2)
+    ce_test = pl.read_parquet(config.artifact(xenc.replace("oof_", "scored_test_"), "parquet")) if xenc else None
+    if xenc:
+        Xt = add_xenc(Xt, ce_test)
     Pt = np.mean([b.predict(Xt.select(feats).cast(pl.Float32).to_numpy()) for b in boosters], axis=0)
     if boosters2:
         keep = [c for c in ("p_first", "p_second") if c in Xt.columns]
         Xt = features(Xt.select(*KEYS, *keep, p_r1=pl.col("p"), p=pl.Series(Pt, dtype=pl.Float32)), t2)
+        if xenc:
+            Xt = add_xenc(Xt, ce_test)
         Pt = np.mean([b.predict(Xt.select(feats + ["p_r1"]).cast(pl.Float32).to_numpy()) for b in boosters2], axis=0)
     scored = Xt.select(*KEYS, p=pl.Series(Pt, dtype=pl.Float32))
+    if save_oof:  # stacked test probabilities, so other decoding policies can be applied without re-stacking
+        scored.write_parquet(config.artifact(f"scored_test_stack{suffix}", "parquet"))
     ids2 = {k: t2.filter(pl.col("src") == k).sort("i2")["id"].to_list() for k in (2, 3)}
     s1_ids = t1["id"].to_list()
+    seen = [c for c in thr if not c.startswith("_")]
     pred = {}
     for c in t1["country"].unique().to_list():
-        t = thr.get(c, thr["_default"])
-        pred.update(decode(scored.filter(pl.col("i1").is_in(t1.filter(pl.col("country") == c)["i1"].implode())),
-                           t["t_single"], t["t_match"], t["miss_mass"]))
+        sub = scored.filter(pl.col("i1").is_in(t1.filter(pl.col("country") == c)["i1"].implode()))
+        if c in thr:
+            t = thr[c]
+        elif unseen_bias is not None:  # no labels: the seen countries' mean thresholds on biased probabilities
+            t = {k: float(np.mean([thr[s][k] for s in seen])) for k in ("t_single", "t_match", "miss_mass")}
+            sub = sub.with_columns(p=pl.Series(shift(sub["p"].to_numpy(), unseen_bias)))
+            thr["_unseen"] = dict(t, bias=unseen_bias)
+        else:
+            t = thr["_default"]
+        pred.update(decode(sub, t["t_single"], t["t_match"], t["miss_mass"]))
     matches = {s1_ids[i1]: [ids2[src][i2] for src, i2 in lst] for i1, lst in pred.items()}
     cand = scored.join(t2.select("src", "i2", "id"), on=["src", "i2"]).group_by("i1").agg(pl.col("id"))
     candidates = {s1_ids[i1]: lst for i1, lst in cand.iter_rows()}
@@ -354,7 +405,12 @@ if __name__ == "__main__":
     ap.add_argument("--rounds", type=int, default=ROUNDS)
     ap.add_argument("--leaves", type=int, default=None)
     ap.add_argument("--mini-tune", action="store_true")
+    ap.add_argument("--save-oof", action="store_true", help="write the final OOF probabilities to oof_stack<suffix>")
+    ap.add_argument("--xenc", default=None, help="cross-encoder OOF artifact, e.g. oof_xenc (test: scored_test_xenc)")
+    ap.add_argument("--unseen-bias", type=float, default=None,
+                    help="logit offset for countries without labels (chosen by loco.py --bias-thr)")
     a = ap.parse_args()
     main(a.sample_s1, write=not a.dry_run, second=a.second, baseline=a.baseline, suffix=a.suffix, wide=a.wide_grid, primary=a.primary,
          fixed_thr=a.fixed_thr, min_gain=a.min_gain, iterate=a.iterate,
-         unseen=UNSEEN if a.strict_unseen else None, rounds=a.rounds, leaves=a.leaves, mini_tune=a.mini_tune)
+         unseen=UNSEEN if a.strict_unseen else None, rounds=a.rounds, leaves=a.leaves, mini_tune=a.mini_tune,
+         save_oof=a.save_oof, xenc=a.xenc, unseen_bias=a.unseen_bias)

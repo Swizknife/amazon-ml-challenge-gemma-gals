@@ -51,12 +51,14 @@ def main(n_fit=config.OOF_FIT, rounds=None):
                                                 label=fit["y"].to_numpy(), feature_name=names),
                             num_boost_round=model_rounds)
         del fit
-        other = X.filter(pl.col("fold") != f).collect()
-        for start in range(0, other.height, 3_000_000):
-            ch = other.slice(start, 3_000_000)
-            preds.append(ch.select(*features.KEYS, p=pl.Series(
-                booster.predict(ch.select(names).cast(pl.Float32).to_numpy()), dtype=pl.Float32)))
-        del other
+        # score the other fold one feature file at a time: holding all ~31M of its rows at once
+        # (~10 GB) ran a 31 GB laptop out of memory once the candidate frame gained a column
+        for part in sorted(out.glob("*.parquet")):
+            ch = pl.read_parquet(part).join(folds, on="i1").filter(pl.col("fold") != f)
+            if ch.height:
+                preds.append(ch.select(*features.KEYS, p=pl.Series(
+                    booster.predict(ch.select(names).cast(pl.Float32).to_numpy()), dtype=pl.Float32)))
+            del ch
         print(f"fold {f} scored ({time.time()-t0:.0f}s)")
     oof = pl.concat(preds)
     oof.write_parquet(config.artifact("oof_train", "parquet"))

@@ -6,12 +6,13 @@ Source-1 entities (the train_oof.py folds) fits LightGBM on the pruned candidate
 pruned training pair. Test pairs are scored by the mean of the two fold models. stack.py
 (--second oof_pruned) then uses both opinions (this one and train_oof.py's) as features.
 
-    python train_pruned.py [--extra feats_v2 --tag _v2]
+    python train_pruned.py [--extra feats_v2,feats_ctx --tag _v9]
 Writes kept_train.parquet, oof_pruned.parquet, scored_test_pruned.parquet, model_pruned{0,1}.txt
 (--extra joins <extra>_train / <extra>_test feature artifacts, e.g. featv2.py's; --tag
 suffixes the outputs: oof_pruned_v2.parquet, scored_test_pruned_v2.parquet, ...)
 """
 import argparse
+import importlib
 import time
 
 import lightgbm as lgb
@@ -25,6 +26,8 @@ import metablock
 from train import PARAMS
 
 T0 = time.time()
+# --extra prefix -> module whose compute(split, keys) builds those features
+MODULES = {"feats_v2": "featv2", "feats_ctx": "featctx", "feats_idf": "featidf"}
 
 
 def log(msg):
@@ -38,13 +41,14 @@ def kept_pairs():
     return pl.read_parquet(path)
 
 
-def main(max_rounds=2000, extra=None, tag=""):
+def main(max_rounds=2000, extra=None, tag="", oof_only=False):
     kept = kept_pairs()
     log(f"kept training pairs: {kept.height}")
     parts = sorted((config.WORK_DIR / "feats_train").glob("*.parquet"))  # part by part: bounded memory
     X = pl.concat([pl.read_parquet(p).join(kept, on=features.KEYS) for p in parts])
-    if extra:
-        X = X.join(pl.read_parquet(config.artifact(f"{extra}_train", "parquet")), on=features.KEYS, how="left")
+    extras = extra.split(",") if extra else []
+    for e in extras:
+        X = X.join(pl.read_parquet(config.artifact(f"{e}_train", "parquet")), on=features.KEYS, how="left")
     names = [c for c in X.columns if c not in (*features.KEYS, "y")]
     n_s1 = pl.read_parquet(config.norm_path("train", 1), columns=["country"]).height
     folds = np.random.default_rng(config.SEED + 1).integers(0, 2, n_s1).astype(np.int8)  # as train_oof.py
@@ -73,13 +77,16 @@ def main(max_rounds=2000, extra=None, tag=""):
         log(f"fold {f}: {booster.best_iteration} rounds; scored the other fold")
     X.select(*features.KEYS, p=pl.Series(oof, dtype=pl.Float32)).write_parquet(config.artifact(f"oof_pruned{tag}", "parquet"))
     del X
+    if oof_only:  # feature experiments compare out-of-fold scores; test scoring only for the adopted variant
+        return
 
     s1, so = features.load_records("test")
     cands = metablock.prune(features.context(blocking.load_cands("test")), s1, so)
-    ext = pl.read_parquet(config.artifact(f"{extra}_test", "parquet")) if extra else None
+    # extra features for exactly these test pairs, built now (no dependency on an earlier run's pairs)
+    exts = [importlib.import_module(MODULES[e]).compute("test", cands.select(features.KEYS)) for e in extras]
     out = []
     for T in features.build(cands, s1, so):
-        if ext is not None:
+        for ext in exts:
             T = T.join(ext, on=features.KEYS, how="left")
         M = T.select(names).cast(pl.Float32).to_numpy()
         out.append(T.select(*features.KEYS, p=pl.Series(np.mean([b.predict(M) for b in boosters], axis=0),
@@ -91,7 +98,8 @@ def main(max_rounds=2000, extra=None, tag=""):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--extra", default=None, help="extra feature artifact prefix, e.g. feats_v2")
+    ap.add_argument("--extra", default=None, help="extra feature artifact prefixes, comma-separated, e.g. feats_v2,feats_ctx")
     ap.add_argument("--tag", default="", help="suffix for the output artifacts, e.g. _v2")
+    ap.add_argument("--oof-only", action="store_true", help="skip test scoring (feature experiments)")
     a = ap.parse_args()
-    main(extra=a.extra, tag=a.tag)
+    main(extra=a.extra, tag=a.tag, oof_only=a.oof_only)

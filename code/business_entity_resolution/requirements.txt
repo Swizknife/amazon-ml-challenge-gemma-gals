@@ -1,12 +1,15 @@
-# Python 3.13 (tested on Windows 11, 31 GB RAM, 12-thread CPU, no GPU)
+# Python 3.13 (tested on Windows 11, 31 GB RAM, 12-thread CPU). Core pipeline: CPU only.
 polars==1.44.2
 rapidfuzz==3.14.6
 lightgbm==4.7.0
 numpy==2.2.6
+scipy==1.16.0                # evaluate.py (connected components for the cluster bootstrap)
+scikit-learn==1.7.0          # loco.py (isotonic calibration check)
 indic-transliteration==2.3.82
+# Cross-encoder stage (v10; runs on a GPU, in practice on Kaggle: src/kaggle/README.md). Not needed for CPU stages:
+# torch==2.8.0              (BSD-3)
+# transformers==5.15.1      (Apache-2.0; model jhu-clsp/mmBERT-small, MIT, 140M params)
+# pandas==2.3.1, pyarrow==25.0.1   (src/kaggle/xenc_kaggle.py only)
 # Optional (only for the ER_USE_EMB=1 embedding experiment in embed.py; not used by the final submission):
 # model2vec==0.9.0      (MIT; model minishlab/potion-multilingual-128M, MIT, 128M params)
 # faiss-cpu==1.15.1     (MIT)
-# Optional (only for xenc.py, the cross-encoder stage; not used by the final submission):
-# torch>=2.8       (BSD-3; CPU wheel: --index-url https://download.pytorch.org/whl/cpu)
-# transformers>=4.48   (Apache-2.0; model jhu-clsp/mmBERT-small, MIT, 140M params)

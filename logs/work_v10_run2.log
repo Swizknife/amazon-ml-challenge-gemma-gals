@@ -1,0 +1,34 @@
+>>> skip stage0
+>>> skip stage1
+>>> skip blocking
+>>> skip train
+>>> oof 13:40
+fold 1 scored (1656s)
+  India: F0.5=0.9763 with t_single=0.75 t_match=0.5 miss_mass=1.0
+  US: F0.5=0.9808 with t_single=0.7 t_match=0.4 miss_mass=0.45
+OOF macro F0.5: 0.9790 (without one-owner 0.9784) (2779s)
+>>> metablock 14:27
+train candidates per S1: 28.6 -> 5.78 | pair recall 0.9803 -> 0.9788 (277s)
+  India: pruned-OOF F0.5=0.9762 with t_single=0.75 t_match=0.5 miss_mass=1.0 (602s)
+  US: pruned-OOF F0.5=0.9807 with t_single=0.7 t_match=0.5 miss_mass=0.68 (1083s)
+wrote thresholds_final (1083s)
+>>> predict 14:45
+  pred.update(decode(scored.filter(pl.col("i1").is_in(i1s)),
+scored 12040830 pairs, 6.95 per S1, thresholds from thresholds_final.json (542s)
+wrote outputs: 1633710 of 1732544 S1 matched, 5787960 links, 3.34 per S1 (591s)
+>>> kept 14:55
+>>> featidf 14:59
+>>> pruned 15:00
+[pruned    542s] fold 0: 1191 rounds; scored the other fold
+[pruned    940s] fold 1: 1288 rounds; scored the other fold
+[pruned   1943s] test pairs scored: 12040830
+>>> stack 15:33
+[stack     53s] pruned OOF: 12758758 pairs; base F0.5 {'US': 0.9822090586582154, 'India': 0.9789714383084643} weighted 0.98043
+[stack    410s] saved oof_stack_v10
+[stack    410s] weighted F0.5 reference 0.98043 -> 0.98340 (gain +0.00297; gate 0.001)
+>>> evaluate 15:40
+[eval    179s] US: F0.5 0.98321 | lost to candidates 0.00736, model recall 0.00671, false merges 0.00271 (check +1.1e-16) | ceiling 0.99259
+[eval    208s] India: F0.5 0.97554 | lost to candidates 0.01411, model recall 0.00692, false merges 0.00343 (check -3.6e-17) | ceiling 0.98576
+[eval    267s] oof_stack_v10 - oof_stack_v7: weighted dF0.5 +0.00444, 95% CI [+0.00434, +0.00454] (country_name)
+[eval    267s] weighted F0.5 0.98343; wrote c:\VSC\work\amazon-ml-challenge\work_v10\eval_oof_stack_v10.json
+>>> done 15:44

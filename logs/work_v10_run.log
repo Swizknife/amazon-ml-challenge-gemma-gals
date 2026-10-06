@@ -1,0 +1,28 @@
+Junction created for C:\VSC\work\amazon-ml-challenge\work_v10\norm <<===>> C:\VSC\work\amazon-ml-challenge\work_v4\norm
+>>> stage0 09:31
+  top-15 per source by pre: recall 0.9641
+  top-15 per source by s0: recall 0.9665
+  union recall 0.9843 | union size 299.9 per S1
+stage-0 ranker saved (463s)
+>>> stage1 09:39
+  top-15 per source by s0 (within the stage-0 top-100): recall 0.9664
+  top-15 per source by s1 (within the stage-0 top-100): recall 0.9802
+  stage-0 shortlist recall 0.9807 | shortlist size 140.3 per S1
+stage-1 ranker saved (612s)
+>>> blocking 09:49
+│ country ┆ src ┆ pair_recall ┆ pairs   │
+│ country ┆ addr       ┆ pair_recall ┆ pairs   │
+pair recall 0.9803 | entities with all matches found 0.9343 | candidates per S1 28.6
+test: 49415689 candidate pairs, 28.5 per S1 (3455s)
+>>> train 12:43
+Training until validation scores don't improve for 50 rounds
+  US: F0.5=0.9806 with t_single=0.7 t_match=0.5 miss_mass=0.3
+  India: F0.5=0.9756 with t_single=0.7 t_match=0.5 miss_mass=1.0
+holdout macro F0.5 (all countries): 0.9786  (1209s)
+>>> oof 13:03
+FAILED oof
+memory allocation of memory allocation of memory allocation of 126090228 bytes failed
+126090228 bytes failed
+skipping backtrace printing to avoid potential recursion
+252180456 bytes failed
+skipping backtrace printing to avoid potential recursion

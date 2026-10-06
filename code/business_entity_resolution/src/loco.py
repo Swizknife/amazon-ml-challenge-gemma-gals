@@ -16,12 +16,13 @@ With --stack, a collective stacker (stack.py features, p = pruned probability) i
 on the training country's out-of-fold scores and applied to the held-out country's LOCO
 scores, so the policy is found on the same kind of probability the submission decodes.
 
-    python loco.py [--sample-s1 N] [--stack] [--check] [--extra feats_v2_train]
-Writes <WORK_DIR>/loco_report[_<extra>].json (--extra adds a feature artifact, e.g. featv2.py's)
+    python loco.py [--sample-s1 N] [--stack] [--check] [--extra feats_v2,feats_ctx]
+Writes <WORK_DIR>/loco_report[_<extras>].json (--extra joins <prefix>_train feature artifacts, as train_pruned.py)
 """
 import argparse
 import json
 import time
+from pathlib import Path
 
 import lightgbm as lgb
 import numpy as np
@@ -41,6 +42,7 @@ KEYS = features.KEYS
 GRID_TS = (0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9)
 GRID_TM = (0.2, 0.3, 0.4, 0.5)
 GRID_MM = (0.17, 0.34, 0.5)
+BIAS_GRID = (0.0, -0.1, -0.2, -0.3, -0.5, -0.8)
 T0 = time.time()
 
 
@@ -57,8 +59,8 @@ class Scorer:
     one-owner, sorted pairs, so a whole threshold grid costs one sort.
     """
 
-    def __init__(self, pairs, ids, n_true):
-        P = one_owner(pairs).sort(["i1", "p"], descending=[False, True])
+    def __init__(self, pairs, ids, n_true, owner=True):
+        P = (one_owner(pairs) if owner else pairs).sort(["i1", "p"], descending=[False, True])
         P = P.with_columns(k=pl.int_range(1, pl.len() + 1).over("i1").cast(pl.Float64),
                            ctp=pl.col("p").cast(pl.Float64).cum_sum().over("i1"),
                            cy=pl.col("y").cast(pl.Float64).cum_sum().over("i1"),
@@ -70,12 +72,17 @@ class Scorer:
         # entities that end with an empty list score 1 if they are singletons, else 0
         self.empty_ok = int((ent["n_true"].fill_null(0) == 0).sum())
 
-    def f(self, ts, tm, mm):
+    def choose(self, ts, tm, mm):
+        """The chosen prefix of every entity that receives a non-empty list: its length k and true positives cy."""
         L = pl.col
-        best = (self.P.filter((L("pmax") >= ts) & (L("p") >= tm))
+        return (self.P.filter((L("pmax") >= ts) & (L("p") >= tm))
                 .with_columns(fexp=1.25 * L("ctp") / (0.25 * (L("psum") + mm) + L("k")))
                 .sort(["i1", "fexp", "k"], descending=[False, True, False])
                 .group_by("i1", maintain_order=True).first())
+
+    def f(self, ts, tm, mm):
+        L = pl.col
+        best = self.choose(ts, tm, mm)
         # realized F0.5 of each chosen prefix; singletons that got a list score 0
         real = best.select(pl.when(L("n_true") == 0).then(0.0)
                            .otherwise(1.25 * L("cy") / (0.25 * L("n_true") + L("k"))).sum()).item()
@@ -121,7 +128,7 @@ def stacked_loco(P, held, so):
                                               dtype=pl.Float32))
 
 
-def main(sample_s1=None, do_stack=False, do_check=False, extra=None):
+def main(sample_s1=None, do_stack=False, do_check=False, extra=None, bias_thr=None):
     s1 = pl.read_parquet(config.norm_path("train", 1), columns=["country"]).with_row_index("i1")
     country = s1["country"].to_numpy()
     sample = None
@@ -133,8 +140,8 @@ def main(sample_s1=None, do_stack=False, do_check=False, extra=None):
         kept = kept.filter(pl.col("i1").is_in(sample.implode()))
     parts = sorted((config.WORK_DIR / "feats_train").glob("*.parquet"))
     X = pl.concat([pl.read_parquet(p).join(kept, on=KEYS) for p in parts])
-    if extra:
-        X = X.join(pl.read_parquet(config.artifact(extra, "parquet")), on=KEYS, how="left")
+    for e in (extra.split(",") if extra else []):
+        X = X.join(pl.read_parquet(config.artifact(f"{e}_train", "parquet")), on=KEYS, how="left")
     names = [c for c in X.columns if c not in (*KEYS, "y")]
     c_pair = country[X["i1"].to_numpy()]
     countries = sorted(set(c_pair.tolist()))
@@ -221,7 +228,23 @@ def main(sample_s1=None, do_stack=False, do_check=False, extra=None):
     report["cost_of_unseen"] = {c: report["countries"][c]["p_seen"]["best_f05"] - report["policy"]["p_loco"]["per_country"][c]
                                 for c in countries}
     log(f"cost of an unseen country (seen best - LOCO policy): {report['cost_of_unseen']}")
-    out = config.WORK_DIR / f"loco_report{'_' + extra if extra else ''}{'_sample' if sample is not None else ''}.json"
+    if do_stack and bias_thr:
+        # unseen-country logit bias: each held-out country is decoded with the *other* country's stack
+        # thresholds, on LOCO-stacked probabilities shifted by b -- as France meets the submission
+        thr = json.loads(Path(bias_thr).read_text())
+        report["bias"] = {}
+        for b in BIAS_GRID:
+            per = {}
+            for c in countries:
+                t = thr[next(o for o in countries if o != c)]
+                sub = P.filter(pl.col("country") == c)
+                sub = sub.select(*KEYS, "y", p=pl.Series(stack.shift(sub["p_stack"].to_numpy(), b)))
+                per[c] = Scorer(sub, ids_by_c[c], n_true).f(t["t_single"], t["t_match"], t["miss_mass"])
+            report["bias"][f"{b:+.1f}"] = dict(per_country=per, mean=float(np.mean(list(per.values()))))
+            log(f"unseen-country bias {b:+.1f}: {per} mean {report['bias'][f'{b:+.1f}']['mean']:.5f}")
+        report["bias_best"] = float(max(report["bias"], key=lambda k: report["bias"][k]["mean"]))
+        log(f"best unseen-country bias: {report['bias_best']:+.1f}")
+    out = config.WORK_DIR / f"loco_report{'_' + extra.replace(',', '+') if extra else ''}{'_sample' if sample is not None else ''}.json"
     out.write_text(json.dumps(report, indent=2, default=float))
     log(f"wrote {out}")
     return report
@@ -232,6 +255,7 @@ if __name__ == "__main__":
     ap.add_argument("--sample-s1", type=int, default=None)
     ap.add_argument("--stack", action="store_true", help="also fit a LOCO collective stacker")
     ap.add_argument("--check", action="store_true", help="verify the vectorized scorer against decode.decode")
-    ap.add_argument("--extra", default=None, help="extra training feature artifact, e.g. feats_v2_train")
+    ap.add_argument("--extra", default=None, help="extra feature artifact prefixes, comma-separated, e.g. feats_v2,feats_ctx")
+    ap.add_argument("--bias-thr", default=None, help="stack thresholds json; with --stack, search the unseen-country bias")
     a = ap.parse_args()
-    main(a.sample_s1, a.stack, a.check, a.extra)
+    main(a.sample_s1, a.stack, a.check, a.extra, a.bias_thr)

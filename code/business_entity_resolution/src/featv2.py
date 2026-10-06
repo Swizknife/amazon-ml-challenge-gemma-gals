@@ -9,9 +9,12 @@ New per-pair features, parsed from the raw address:
   units   u_n1, u_n2, u_eq, u_conf    shop / flat / unit / suite / office numbers and
                                       letter-dash codes (G-4); conflict = both have
                                       units and share none
-  suffix  hs_1, hs_2, hs_eq, hs_conf  house-number letter suffix (4233D, 21 A); French
-                                      bis / ter / quater map to b / c / d, so France
-                                      reuses what train teaches about suffixes
+  suffix  hs_1, hs_2, hs_eq,          house-number letter suffix (4233D, 21 A); French
+          hs_conf, hs_one             bis / ter / quater map to b / c / d, so France
+                                      reuses what train teaches about suffixes. Same main
+                                      number: hs_conf = both suffixed and different (a
+                                      conflict); hs_one = only one side suffixed, which is
+                                      unknown rather than a conflict (noise drops suffixes)
   digits  h_lev, h_pre                edit distance of the main house numbers; one is a
                                       prefix of the other (272 vs 27: a dropped digit)
   extra   x1_df, x2_df, x1_in_a2, x2_in_a1  rarest extra name token per side (log df) and
@@ -42,7 +45,7 @@ UNIT_HEAD = r"^" + UNIT_WORDS + r"\b\.?\s*(?:no\b\.?)?\s*[:#.\-]?\s*"
 # (21 a, 17 bis); spaced e/n/s/w are directions, so only a-d are taken there
 SUFFIX_RE = r"(\d+)(?:([a-z])\b)?(?:\s+(bis|ter|quater|[a-d])\b)?"
 FRENCH = {"bis": "b", "ter": "c", "quater": "d"}
-NEW = ["u_n1", "u_n2", "u_eq", "u_conf", "hs_1", "hs_2", "hs_eq", "hs_conf", "h_lev", "h_pre",
+NEW = ["u_n1", "u_n2", "u_eq", "u_conf", "hs_1", "hs_2", "hs_eq", "hs_conf", "hs_one", "h_lev", "h_pre",
        "x1_df", "x2_df", "x1_in_a2", "x2_in_a1"]
 T0 = time.time()
 
@@ -105,7 +108,9 @@ def pair_features(pairs, s1, so, df, chunk=2_000_000):
             & (L("units_1").list.set_intersection(L("units_2")).list.len() == 0),
             hs_1=L("hsuf_1") != "", hs_2=L("hsuf_2") != "",
             hs_eq=L("hsuf_1") == L("hsuf_2"),
-            hs_conf=(L("hmain_1") == L("hmain_2")) & (L("hmain_1") != "") & (L("hsuf_1") != L("hsuf_2")),
+            hs_conf=(L("hmain_1") == L("hmain_2")) & (L("hmain_1") != "") & (L("hsuf_1") != "")
+            & (L("hsuf_2") != "") & (L("hsuf_1") != L("hsuf_2")),
+            hs_one=(L("hmain_1") == L("hmain_2")) & (L("hmain_1") != "") & ((L("hsuf_1") == "") != (L("hsuf_2") == "")),
             h_pre=(L("hmain_1") != L("hmain_2")) & (L("hmain_1") != "") & (L("hmain_2") != "")
             & (L("hmain_1").str.starts_with(L("hmain_2")) | L("hmain_2").str.starts_with(L("hmain_1"))),
             x1_in_a2=L("ct_1").list.set_difference(L("ct_2")).list.set_intersection(L("at_2")).list.len() > 0,
@@ -114,6 +119,12 @@ def pair_features(pairs, s1, so, df, chunk=2_000_000):
                        h_lev=pl.Series(lev), x1_df=_extra_df(ch, "1", df), x2_df=_extra_df(ch, "2", df))
         out.append(f.select(*KEYS, *NEW))
     return pl.concat(out)
+
+
+def compute(split, keys):
+    """Features for any pair set of a split (train_pruned.py builds test features this way)."""
+    s1, so, df = records(split)
+    return pair_features(keys, s1, so, df)
 
 
 def build(split, keys):

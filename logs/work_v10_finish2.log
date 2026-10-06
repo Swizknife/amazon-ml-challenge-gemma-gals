@@ -1,0 +1,12 @@
+>>> kaggle score kernel 16:22
+Kernel version 2 successfully pushed.  Please check progress at https://www.kaggle.com/code/altron24/er-xenc-score
+Output file downloaded to .\test_m1.parquet
+'charmap' codec can't encode character '\u258f' in position 535: character maps to <undefined>
+{
+  "model": "saved fold models",
+  "oof_pairs": 1490405,
+  "oof_auc_ce": 0.9594208862328758,
+  "oof_auc_matcher": 0.9275730187199734,
+  "minutes": 30.616421047846476
+}scored 1490405 pairs but the band has 1601814: stale Kaggle dataset version
+FAILED stale-band

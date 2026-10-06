@@ -1,0 +1,13 @@
+>>> stack 17:02
+[stack     56s] pruned OOF: 12758758 pairs; base F0.5 {'US': 0.9822090586582154, 'India': 0.9789714383084643} weighted 0.98043
+[stack  20193s] saved oof_stack_v10x
+[stack  20193s] weighted F0.5 reference 0.98043 -> 0.98732 (gain +0.00689; gate 0.001)
+[stack  20439s] wrote c:\VSC\work\amazon-ml-challenge\output_v10_v10x: 1632211 of 1732544 S1 matched, 3.35 links per S1, 6.95 candidates per S1
+>>> evaluate 22:43
+[eval    169s] US: F0.5 0.98321 | lost to candidates 0.00736, model recall 0.00671, false merges 0.00271 (check +1.1e-16) | ceiling 0.99259
+[eval    196s] India: F0.5 0.97554 | lost to candidates 0.01411, model recall 0.00692, false merges 0.00343 (check -3.6e-17) | ceiling 0.98576
+[eval    244s] oof_stack_v10x - oof_stack_v7: weighted dF0.5 +0.00834, 95% CI [+0.00823, +0.00845] (country_name)
+[eval    244s] weighted F0.5 0.98733; wrote c:\VSC\work\amazon-ml-challenge\work_v10\eval_oof_stack_v10x.json
+>>> validate 22:47
+PASS — no blocking issues found. Safe to submit.
+>>> done 22:48

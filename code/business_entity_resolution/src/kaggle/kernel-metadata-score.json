@@ -1,0 +1,15 @@
+{
+  "id": "altron24/er-xenc-score",
+  "title": "er-xenc-score",
+  "code_file": "xenc_kaggle.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "dataset_sources": ["altron24/er-xenc-band"],
+  "competition_sources": [],
+  "kernel_sources": ["altron24/er-xenc-v10"],
+  "model_sources": []
+}

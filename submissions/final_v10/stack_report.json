@@ -1,0 +1,68 @@
+{
+  "base": {
+    "US": 0.9822090586582154,
+    "India": 0.9789714383084643
+  },
+  "new": {
+    "US": 0.9882301554265445,
+    "India": 0.9865715633615202
+  },
+  "weighted_base": 0.9804283674658524,
+  "reference": 0.9804283674658524,
+  "weighted_new": 0.9873179297907811,
+  "gain": 0.006889562324928766,
+  "min_gain": 0.001,
+  "features": [
+    "p",
+    "src_f",
+    "p_rank",
+    "p_max",
+    "p_gap",
+    "p_other",
+    "n_cand",
+    "n_hi",
+    "p_sum",
+    "p_rank_s",
+    "n_hi_s",
+    "r_n",
+    "p_rival",
+    "p_rival_gap",
+    "a_c",
+    "a_a",
+    "a_h",
+    "a_p",
+    "b_c",
+    "b_a",
+    "b_h",
+    "b_p",
+    "p_first",
+    "p_second",
+    "ce",
+    "ce_rank",
+    "ce_n",
+    "ce_gap_i1",
+    "ce_rival",
+    "ce_margin"
+  ],
+  "second": "oof_pruned_idf",
+  "rounds": 400,
+  "leaves": null,
+  "round2": false,
+  "thresholds": {
+    "US": {
+      "t_single": 0.6,
+      "t_match": 0.2,
+      "miss_mass": 0.3
+    },
+    "India": {
+      "t_single": 0.6,
+      "t_match": 0.3,
+      "miss_mass": 0.34
+    },
+    "_default": {
+      "t_single": 0.65,
+      "t_match": 0.3,
+      "miss_mass": 0.34
+    }
+  }
+}

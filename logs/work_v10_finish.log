@@ -1,0 +1,17 @@
+>>> export 15:46
+>>> kaggle dataset version 15:47
+Upload successful: xenc_train.parquet (86MB)
+Dataset version is being created. Please check progress at https://www.kaggle.com/datasets/altron24/er-xenc-band
+>>> kaggle score kernel 15:48
+Kernel version 1 successfully pushed.  Please check progress at https://www.kaggle.com/code/altron24/er-xenc-score
+Output file downloaded to .\test_m1.parquet
+'charmap' codec can't encode character '\u258f' in position 474: character maps to <undefined>
+{
+  "model": "saved fold models",
+  "oof_pairs": 1490405,
+  "oof_auc_ce": 0.9594208862328758,
+  "oof_auc_matcher": 0.9275730187199734,
+  "minutes": 30.616421047846476
+}>>> stack 16:21
+FAILED stack
+[stack     55s] pruned OOF: 12758758 pairs; base F0.5 {'US': 0.9822090586582154, 'India': 0.9789714383084643} weighted 0.98043
